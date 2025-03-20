@@ -269,21 +269,22 @@ void Keyframer::Evaluate(uint16_t timestamp) {
     volatile const Keyframe& b = keyframes_[b_index];
 
     volatile uint32_t scale;
+ 
     if (a.timestamp > b.timestamp) {
       // wraparound
-      uint16_t rest = UINT16_MAX - a.timestamp;
-      if (timestamp > a.timestamp) {
-        scale = timestamp - a.timestamp;
+      uint16_t rest = (UINT16_MAX - a.timestamp) + b.timestamp;  // Distance to cover the wraparound gap
+      if (timestamp >= a.timestamp) {
+        scale = timestamp - a.timestamp;  // Normal progression from a to timestamp
       } else /* if (timestamp < b.timestamp) */ {
-        scale = rest + timestamp;
-      }
+        scale = rest + timestamp;  // Wraparound from a to timestamp via UINT16_MAX
+     }
       scale <<= 16;
-      scale /= rest + b.timestamp;
+      scale /= rest;  // Normalize to the total wraparound distance
     } else {
       // normal
-      scale = timestamp - a.timestamp;
-      scale <<= 16;
-      scale /= (b.timestamp - a.timestamp);
+      scale = timestamp - a.timestamp;  // Direct distance from a to timestamp
+      scale <<= 16;  // Scale to a 16-bit value
+      scale /= (b.timestamp - a.timestamp);  // Normalize to the distance between a and b
     }
 
     for (uint8_t i = 0; i < kNumChannels; ++i) {
