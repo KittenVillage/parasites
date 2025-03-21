@@ -198,7 +198,7 @@ uint16_t Keyframer::SampleAnimation(
   }
   return sample;
 }
-
+/*
 int16_t Keyframer::FindNearestKeyframe(uint16_t timestamp, uint16_t tolerance) {
   if (!num_keyframes_) {
     return -1;
@@ -215,6 +215,51 @@ int16_t Keyframer::FindNearestKeyframe(uint16_t timestamp, uint16_t tolerance) {
   }
   return -1;
 }
+*/
+
+
+int16_t Keyframer::FindNearestKeyframe(uint16_t timestamp, uint16_t tolerance) {
+  if (!num_keyframes_) {
+    return -1;  // No keyframes available
+  }
+
+  // Use binary search to get a close match
+  int16_t nearest = FindKeyframe(timestamp);
+  uint16_t min_distance = 0xFFFF;  // Large initial value
+  int16_t closest = -1;
+
+  // Check if FindKeyframe() gave us a good match within tolerance
+  if (nearest >= 0) {
+    uint16_t keyframe_timestamp = keyframes_[nearest].timestamp;
+    uint16_t direct_distance = abs(keyframe_timestamp - timestamp);
+    uint16_t wrapped_distance = 65536 - direct_distance;
+    uint16_t best_distance = std::min(direct_distance, wrapped_distance);
+
+    if (best_distance <= tolerance) {
+      return nearest;
+    }
+  }
+
+  // If the exact match fails, perform a linear scan for the closest keyframe
+  for (uint16_t i = 0; i < num_keyframes_; ++i) {
+    uint16_t keyframe_timestamp = keyframes_[i].timestamp;
+    
+    uint16_t direct_distance = (timestamp > keyframe_timestamp)
+                                 ? (timestamp - keyframe_timestamp)
+                                 : (keyframe_timestamp - timestamp);
+    uint16_t wrapped_distance = 65536 - direct_distance;
+    uint16_t distance = std::min(direct_distance, wrapped_distance);
+
+    if (distance < min_distance) {
+      min_distance = distance;
+      closest = i;
+    }
+  }
+
+  return (min_distance <= tolerance) ? closest : -1;
+}
+
+
 
 bool Keyframer::AddKeyframe(uint16_t timestamp, uint16_t* values) {
   if (num_keyframes_ == kMaxNumKeyframe) {
